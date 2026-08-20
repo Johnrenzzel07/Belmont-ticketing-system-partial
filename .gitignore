@@ -1,0 +1,14 @@
+# Large database dumps — do not commit
+belticket*.sql
+*.sql.gz
+
+# Uploads (user-generated content)
+uploads/*
+!uploads/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

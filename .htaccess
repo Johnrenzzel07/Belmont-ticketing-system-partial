@@ -1,0 +1,17 @@
+Options -Indexes
+AddDefaultCharset UTF-8
+
+# Prevent direct access to config and includes
+<FilesMatch "\.(sql|md|log|gitkeep)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# PHP settings
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+    php_value max_execution_time 60
+    php_flag display_errors Off
+    php_flag log_errors On
+</IfModule>

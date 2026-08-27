@@ -256,6 +256,14 @@
                             <span>Activity Logs</span>
                         </a>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/migrate') !== false ? 'active' : '' ?>"
+                           href="<?= APP_URL ?>/views/admin/migrate.php">
+                            <i class="bi bi-box-arrow-in-down-right"></i>
+                            <span>Migrate Tickets</span>
+                        </a>
+                    </li>
                     <?php endif; ?>
 
                 </ul>

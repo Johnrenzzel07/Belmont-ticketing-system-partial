@@ -14,7 +14,7 @@ $pdo = db();
 // Mark open/in-progress tickets past their SLA deadline (hours-based)
 $stmt = $pdo->prepare(
     "UPDATE tickets
-     SET sla_breached = 1
+     SET sla_breached = 1, updated_at = updated_at
      WHERE sla_breached = 0
        AND status NOT IN ('resolved','closed')
        AND (

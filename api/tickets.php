@@ -408,6 +408,10 @@ HTML;
              LIMIT 8"
         )->fetchAll();
         $feed = array_map(function ($r) {
+            $createdTs = strtotime($r['created_at']);
+            $updatedTs = strtotime($r['updated_at']);
+            // Show "updated" only when the ticket was actually changed after creation
+            $wasUpdated = $updatedTs > $createdTs + 60;
             return [
                 'id'        => (int)$r['id'],
                 'code'      => $r['ticket_code'],
@@ -415,8 +419,8 @@ HTML;
                 'status'    => $r['status'],
                 'priority'  => $r['priority'],
                 'requester' => $r['requester_name'] ?? 'Unknown',
-                'time_ago'  => timeAgo($r['updated_at']),
-                'is_new'    => (strtotime($r['created_at']) >= time() - 120),
+                'time_ago'  => ($wasUpdated ? 'Updated ' : '') . timeAgo($wasUpdated ? $r['updated_at'] : $r['created_at']),
+                'is_new'    => ($createdTs >= time() - 3600),
             ];
         }, $rows);
         jsonResponse(true, 'OK', ['feed' => $feed, 'server_time' => date('H:i:s')]);

@@ -285,13 +285,20 @@ function formatDate(string $date): string {
 }
 
 function timeAgo(string $datetime): string {
+    if (empty($datetime) || $datetime === '0000-00-00 00:00:00') {
+        return 'N/A';
+    }
     $now  = time();
     $then = strtotime($datetime);
+    if ($then === false) {
+        return 'N/A';
+    }
     $diff = $now - $then;
-    if ($diff < 60)     return 'Just now';
-    if ($diff < 3600)   return floor($diff/60)   . ' min ago';
-    if ($diff < 86400)  return floor($diff/3600)  . ' hr ago';
-    if ($diff < 604800) return floor($diff/86400) . ' days ago';
+    if ($diff < 0)    return 'Just now';
+    if ($diff < 60)   return 'Just now';
+    if ($diff < 3600) return floor($diff / 60) . ' min ago';
+    if ($diff < 86400) return floor($diff / 3600) . ' hr ago';
+    if ($diff < 604800) return floor($diff / 86400) . ' days ago';
     return date('M d, Y', $then);
 }
 
@@ -352,4 +359,120 @@ function getCsrfToken(): string {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
     return $_SESSION['csrf_token'];
+}
+
+/**
+ * Load active categories with department labels for duplicate names.
+ *
+ * @return array<int, array<string, mixed>>
+ */
+function loadCategoriesWithLabels(PDO $pdo): array
+{
+    $categories = $pdo->query(
+        "SELECT c.id, c.name, c.department_id, d.name AS department_name
+         FROM categories c
+         LEFT JOIN departments d ON d.id = c.department_id
+         WHERE c.is_active = 1
+         ORDER BY c.name, d.name"
+    )->fetchAll();
+
+    $categoryNameCounts = [];
+    foreach ($categories as $c) {
+        $key = strtolower(trim($c['name']));
+        $categoryNameCounts[$key] = ($categoryNameCounts[$key] ?? 0) + 1;
+    }
+    foreach ($categories as &$c) {
+        $needsDept = ($categoryNameCounts[strtolower(trim($c['name']))] ?? 0) > 1;
+        $c['label'] = ($needsDept && !empty($c['department_name']))
+            ? $c['name'] . ' — ' . $c['department_name']
+            : $c['name'];
+    }
+    unset($c);
+
+    return $categories;
+}
+
+function categoriesToClientJson(array $categories): string
+{
+    return json_encode(array_map(static fn($c) => [
+        'id'              => (int)$c['id'],
+        'name'            => $c['name'],
+        'label'           => $c['label'] ?? $c['name'],
+        'department_id'   => (int)($c['department_id'] ?? 0),
+        'department_name' => $c['department_name'] ?? '',
+    ], $categories), JSON_UNESCAPED_UNICODE);
+}
+
+function categoryLabelById(array $categories, int $categoryId): string
+{
+    foreach ($categories as $c) {
+        if ((int)$c['id'] === $categoryId) {
+            return $c['label'] ?? $c['name'];
+        }
+    }
+    return '';
+}
+
+function parseCategoryInput(string $input): array
+{
+    if (preg_match('/^(.+?)\s+[—\-]\s+(.+)$/', trim($input), $m)) {
+        return ['name' => trim($m[1]), 'department_name' => trim($m[2])];
+    }
+    return ['name' => trim($input), 'department_name' => null];
+}
+
+function resolveMigrationCategoryId(PDO $pdo, ?int $categoryId, string $categoryName, ?int $deptId): ?int
+{
+    if ($categoryId) {
+        $check = $pdo->prepare('SELECT id FROM categories WHERE id = ? AND is_active = 1');
+        $check->execute([$categoryId]);
+        if ($check->fetch()) {
+            return $categoryId;
+        }
+    }
+
+    $parsed = parseCategoryInput($categoryName);
+    $name = $parsed['name'];
+    if ($name === '') {
+        return null;
+    }
+
+    if ($parsed['department_name']) {
+        $stmt = $pdo->prepare(
+            "SELECT c.id FROM categories c
+             JOIN departments d ON d.id = c.department_id
+             WHERE LOWER(c.name) = LOWER(?) AND LOWER(d.name) = LOWER(?) AND c.is_active = 1
+             LIMIT 1"
+        );
+        $stmt->execute([$name, $parsed['department_name']]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            return (int)$existing['id'];
+        }
+    }
+
+    if ($deptId) {
+        $stmt = $pdo->prepare(
+            'SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND department_id = ? AND is_active = 1 LIMIT 1'
+        );
+        $stmt->execute([$name, $deptId]);
+        $existing = $stmt->fetch();
+        if ($existing) {
+            return (int)$existing['id'];
+        }
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND is_active = 1 LIMIT 1'
+    );
+    $stmt->execute([$name]);
+    $existing = $stmt->fetch();
+    if ($existing) {
+        return (int)$existing['id'];
+    }
+
+    $pdo->prepare('INSERT INTO categories (department_id, name) VALUES (?, ?)')
+        ->execute([$deptId ?: null, $name]);
+
+    return (int)$pdo->lastInsertId();
 }

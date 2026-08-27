@@ -38,7 +38,7 @@ $stmt = $pdo->query(
        )"
 );
 foreach ($stmt->fetchAll() as $t) {
-    $pdo->prepare("UPDATE tickets SET sla_breached = 1 WHERE id = ?")->execute([$t['id']]);
+    $pdo->prepare("UPDATE tickets SET sla_breached = 1, updated_at = updated_at WHERE id = ?")->execute([$t['id']]);
     $pdo->prepare(
         "INSERT INTO escalation_logs (ticket_id, action, old_priority, new_priority, details)
          VALUES (?, 'breached', ?, ?, ?)"

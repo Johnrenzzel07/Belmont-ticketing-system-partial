@@ -212,6 +212,12 @@ include __DIR__ . '/../../includes/header.php';
                 style="cursor:pointer;font-size:.82rem" title="Click to copy">
                 <?= e($ticket['ticket_code']) ?>
             </code>
+            <?php if (!empty($ticket['is_legacy']) && !empty($ticket['legacy_ticket_number'])): ?>
+            <span class="badge bg-warning text-dark" style="font-size:.68rem"
+                  title="Imported from old osTicket system">
+                Legacy #<?= e(str_pad($ticket['legacy_ticket_number'], 6, '0', STR_PAD_LEFT)) ?>
+            </span>
+            <?php endif; ?>
             <span class="priority-badge <?= $priorityClasses[$ticket['priority']] ?? '' ?>">
                 <?= ucfirst($ticket['priority']) ?>
             </span>
@@ -685,7 +691,14 @@ include __DIR__ . '/../../includes/header.php';
                         <?php endif; ?>
                     </dd>
 
-
+                    <?php if (!empty($ticket['is_legacy']) && !empty($ticket['legacy_ticket_number'])): ?>
+                        <dt class="col-5 text-muted">Old Ticket #</dt>
+                        <dd class="col-7 mb-0">
+                            <span class="badge bg-warning text-dark">
+                                #<?= e(str_pad($ticket['legacy_ticket_number'], 6, '0', STR_PAD_LEFT)) ?>
+                            </span>
+                        </dd>
+                    <?php endif; ?>
 
                     <dt class="col-5 text-muted">Created</dt>
                     <dd class="col-7 mb-0"><?= formatDateTime($ticket['created_at']) ?></dd>

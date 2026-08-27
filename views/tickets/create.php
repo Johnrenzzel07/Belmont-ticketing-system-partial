@@ -15,7 +15,7 @@ $formData = [];
 
 // Load dropdowns
 $departments = $pdo->query("SELECT id, name FROM departments WHERE is_active=1 ORDER BY name")->fetchAll();
-$categories  = $pdo->query("SELECT id, name, department_id FROM categories WHERE is_active=1 ORDER BY name")->fetchAll();
+$categories  = loadCategoriesWithLabels($pdo);
 // Staff and regular-user accounts only — admins are excluded from the
 // Assign To dropdown (they manage the system but don't take ticket queues).
 $staffList   = isStaff()
@@ -29,6 +29,7 @@ $formData = [
     'priority'      => 'medium',
     'department_id' => (int)($user['dept_id'] ?? 0),
     'category_id'   => 0,
+    'category_name' => '',
     'assigned_to'   => null,
     'due_date'      => '',
     'source'        => 'web',
@@ -42,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'priority'      => $_POST['priority']           ?? 'medium',
         'department_id' => (int)($_POST['department_id']?? 0),
         'category_id'   => (int)($_POST['category_id'] ?? 0),
+        'category_name' => trim($_POST['category_name'] ?? ''),
         'assigned_to'   => (int)($_POST['assigned_to']  ?? 0) ?: null,
         'due_date'      => $_POST['due_date']            ?? '',
         'source'        => 'web',
@@ -50,6 +52,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($formData['subject']))     $errors[] = 'Subject is required.';
     if (empty($formData['description'])) $errors[] = 'Description is required.';
     if (!in_array($formData['priority'], ['low','medium','high','critical'])) $errors[] = 'Invalid priority.';
+
+    $formData['category_id'] = resolveMigrationCategoryId(
+        $pdo,
+        $formData['category_id'] ?: null,
+        $formData['category_name'],
+        $formData['department_id'] ?: null
+    ) ?? 0;
+    if ($formData['category_id'] && $formData['category_name'] === '') {
+        $formData['category_name'] = categoryLabelById($categories, (int)$formData['category_id']);
+    }
 
     if (empty($errors)) {
         $ticketCode = generateTicketCode();
@@ -278,6 +290,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'New Ticket';
+if (empty($formData['category_name']) && !empty($formData['category_id'])) {
+    $formData['category_name'] = categoryLabelById($categories, (int)$formData['category_id']);
+}
+$categoriesJson = categoriesToClientJson($categories);
 include __DIR__ . '/../../includes/header.php';
 ?>
 
@@ -452,15 +468,14 @@ include __DIR__ . '/../../includes/header.php';
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Category</label>
-                        <select name="category_id" id="catSelect" class="form-select">
-                            <option value="">-- Select Category --</option>
-                            <?php foreach ($categories as $c): ?>
-                            <option value="<?= $c['id'] ?>" data-dept="<?= $c['department_id'] ?>"
-                                    <?= ($formData['category_id']??0)==$c['id']?'selected':'' ?>>
-                                <?= e($c['name']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <input type="text" name="category_name" id="categoryInput" class="form-control"
+                               list="categoryDatalist" autocomplete="off"
+                               placeholder="Select existing or type a new category"
+                               value="<?= e($formData['category_name'] ?? '') ?>">
+                        <input type="hidden" name="category_id" id="categoryId"
+                               value="<?= (int)($formData['category_id'] ?? 0) ?>">
+                        <datalist id="categoryDatalist"></datalist>
+                        <div class="form-text">Pick from the list or type a new category name.</div>
                     </div>
                     <?php if (isStaff()): ?>
                     <div class="mb-3">
@@ -516,7 +531,7 @@ include __DIR__ . '/../../includes/header.php';
 // Sync options from right panel to main form (update value on every submit attempt)
 document.querySelector('[type="submit"]').closest('form').addEventListener('submit', function() {
     const form = this;
-    ['priority','department_id','category_id','assigned_to','due_date'].forEach(function(name) {
+    ['priority','department_id','category_id','category_name','assigned_to','due_date'].forEach(function(name) {
         const src = document.querySelector('#optionsProxy [name="' + name + '"]');
         if (!src) return;
         let dst = form.querySelector('[name="' + name + '"]');
@@ -540,20 +555,58 @@ document.getElementById('attachFile')?.addEventListener('change', function() {
     }
 });
 
-// Dynamic category filter by department
-function filterCategoriesByDept(deptId) {
-    const $cat = document.getElementById('catSelect');
-    Array.from($cat.options).forEach(function(opt) {
-        if (!opt.value) return; // keep "-- Select Category --"
-        // Hide all if no department selected, otherwise filter by dept
-        opt.hidden = !deptId || opt.dataset.dept != deptId;
+// Category combobox — select existing or type a new one
+const allCategories = <?= $categoriesJson ?>;
+
+function refreshCategoryDatalist() {
+    const datalist = document.getElementById('categoryDatalist');
+    const deptId = document.getElementById('deptSelect')?.value || '';
+    if (!datalist) return;
+    datalist.innerHTML = '';
+    allCategories.forEach(function (cat) {
+        if (deptId && cat.department_id && String(cat.department_id) !== deptId) {
+            return;
+        }
+        const opt = document.createElement('option');
+        opt.value = cat.label || cat.name;
+        if (cat.department_name && (cat.label || cat.name) !== cat.name) {
+            opt.label = cat.department_name;
+        }
+        datalist.appendChild(opt);
     });
-    // Reset category if the current selection belongs to a different dept
-    const selected = $cat.options[$cat.selectedIndex];
-    if (selected && selected.value && deptId && selected.dataset.dept != deptId) {
-        $cat.value = '';
-    }
+    syncCategoryId();
 }
+
+function syncCategoryId() {
+    const input = document.getElementById('categoryInput');
+    const hidden = document.getElementById('categoryId');
+    const deptId = document.getElementById('deptSelect')?.value || '';
+    if (!input || !hidden) return;
+    const raw = input.value.trim().toLowerCase();
+    const match = allCategories.find(function (cat) {
+        const label = (cat.label || cat.name).toLowerCase();
+        const name = cat.name.toLowerCase();
+        if (raw === label) return true;
+        if (raw === name) {
+            if (!deptId) return true;
+            return String(cat.department_id) === deptId;
+        }
+        return false;
+    });
+    hidden.value = match ? String(match.id) : '';
+}
+
+function setCategoryById(categoryId) {
+    const cat = allCategories.find(function (c) { return String(c.id) === String(categoryId); });
+    const input = document.getElementById('categoryInput');
+    const hidden = document.getElementById('categoryId');
+    if (!cat || !input || !hidden) return;
+    input.value = cat.label || cat.name;
+    hidden.value = String(cat.id);
+}
+
+document.getElementById('categoryInput')?.addEventListener('input', syncCategoryId);
+document.getElementById('categoryInput')?.addEventListener('change', syncCategoryId);
 
 // Dynamic assignee filter by department — every department's members are
 // assignable; admins stay visible regardless of department.
@@ -571,15 +624,15 @@ function filterStaffByDept(deptId) {
 }
 
 document.getElementById('deptSelect')?.addEventListener('change', function() {
-    filterCategoriesByDept(this.value);
+    refreshCategoryDatalist();
     filterStaffByDept(this.value);
 });
 
 // Run on page load to apply filters if department is already pre-selected
 (function() {
     const deptSel = document.getElementById('deptSelect');
+    refreshCategoryDatalist();
     if (deptSel) {
-        filterCategoriesByDept(deptSel.value);
         filterStaffByDept(deptSel.value);
     }
 })();
@@ -674,10 +727,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const deptSel = document.getElementById('deptSelect');
                 if (t.department_id && deptSel) {
                     deptSel.value = t.department_id;
-                    filterCategoriesByDept(String(t.department_id));
+                    refreshCategoryDatalist();
                 }
-                const catSel = document.getElementById('catSelect');
-                if (t.category_id && catSel) catSel.value = t.category_id;
+                if (t.category_id) setCategoryById(t.category_id);
 
                 const assignSel = document.getElementById('assignSelect');
                 if (assignSel && t.department_id) filterStaffByDept(String(t.department_id));
@@ -739,13 +791,11 @@ document.getElementById('aiWriteBtn').addEventListener('click', function() {
                 const deptSel = document.getElementById('deptSelect');
                 if (t.department_id && deptSel) {
                     deptSel.value = t.department_id;
-                    filterCategoriesByDept(String(t.department_id));
+                    refreshCategoryDatalist();
                     if (t.department_name) applied.push('Dept: ' + t.department_name);
                 }
-                // Category (after the dept filter so the option is visible)
-                const catSel = document.getElementById('catSelect');
-                if (t.category_id && catSel) {
-                    catSel.value = t.category_id;
+                if (t.category_id) {
+                    setCategoryById(t.category_id);
                     if (t.category_name) applied.push('Category: ' + t.category_name);
                 }
                 // Auto-assign (staff only — the field doesn't exist for requesters)

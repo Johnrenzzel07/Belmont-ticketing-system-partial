@@ -10,10 +10,10 @@ if (isLoggedIn()) {
     exit;
 }
 
-$pdo    = db();
-$token  = trim($_GET['token'] ?? $_POST['token'] ?? '');
-$error  = '';
-$done   = false;
+$pdo = db();
+$token = trim($_GET['token'] ?? $_POST['token'] ?? '');
+$error = '';
+$done = false;
 
 // Validate token
 $tokenRow = null;
@@ -35,7 +35,7 @@ if (!$token || !$tokenRow) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
     $password = $_POST['password'] ?? '';
-    $confirm  = $_POST['confirm']  ?? '';
+    $confirm = $_POST['confirm'] ?? '';
 
     if (strlen($password) < 8) {
         $error = 'Password must be at least 8 characters.';
@@ -54,20 +54,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reset Password | <?= APP_NAME ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/main.css">
 </head>
+
 <body class="login-page">
 
     <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
-        <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(99,102,241,.08);top:-80px;right:-60px;filter:blur(40px)"></div>
-        <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(139,92,246,.06);bottom:-100px;left:-80px;filter:blur(60px)"></div>
+        <div
+            style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(99,102,241,.08);top:-80px;right:-60px;filter:blur(40px)">
+        </div>
+        <div
+            style="position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(139,92,246,.06);bottom:-100px;left:-80px;filter:blur(60px)">
+        </div>
     </div>
 
     <div class="login-card">
@@ -89,7 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
             <div class="alert alert-success py-2 px-3 mb-3" style="font-size:.83rem;border-radius:8px">
                 <i class="bi bi-check-circle me-1"></i> Your password has been updated successfully.
             </div>
-            <a href="<?= APP_URL ?>/login.php" class="btn btn-primary w-100 btn-lg" style="border-radius:8px;font-weight:600">
+            <a href="<?= APP_URL ?>/login.php" class="btn btn-primary w-100 btn-lg"
+                style="border-radius:8px;font-weight:600">
                 <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
             </a>
 
@@ -103,9 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
 
         <?php else: ?>
             <?php if ($error): ?>
-            <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.83rem;border-radius:8px">
-                <i class="bi bi-exclamation-circle me-1"></i><?= e($error) ?>
-            </div>
+                <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.83rem;border-radius:8px">
+                    <i class="bi bi-exclamation-circle me-1"></i><?= e($error) ?>
+                </div>
             <?php endif; ?>
 
             <form method="POST" novalidate>
@@ -115,10 +123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
                         <input type="password" id="password" name="password"
-                               class="form-control border-start-0 border-end-0"
-                               placeholder="At least 8 characters" required autofocus minlength="8">
+                            class="form-control border-start-0 border-end-0" placeholder="At least 8 characters" required
+                            autofocus minlength="8">
                         <button class="input-group-text bg-light border-start-0 toggle-pwd" type="button"
-                                onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'">
+                            onclick="this.previousElementSibling.type = this.previousElementSibling.type === 'password' ? 'text' : 'password'">
                             <i class="bi bi-eye text-muted"></i>
                         </button>
                     </div>
@@ -126,10 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
                 <div class="mb-4">
                     <label for="confirm" class="form-label required">Confirm Password</label>
                     <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
-                        <input type="password" id="confirm" name="confirm"
-                               class="form-control border-start-0"
-                               placeholder="Repeat your new password" required>
+                        <span class="input-group-text bg-light border-end-0"><i
+                                class="bi bi-lock-fill text-muted"></i></span>
+                        <input type="password" id="confirm" name="confirm" class="form-control border-start-0"
+                            placeholder="Repeat your new password" required>
                     </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 btn-lg" style="border-radius:8px;font-weight:600">
@@ -145,4 +153,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $tokenRow && !$done) {
         </div>
     </div>
 </body>
+
 </html>

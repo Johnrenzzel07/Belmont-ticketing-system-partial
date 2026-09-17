@@ -382,9 +382,7 @@ include __DIR__ . '/../../includes/header.php';
                             };
                             ?>
                             <?php if ($isImage): ?>
-                                <a href="<?= $fileUrl ?>" target="_blank" class="reply-attachment-img-wrap">
-                                    <img src="<?= $fileUrl ?>" alt="<?= e($att['filename']) ?>" class="reply-attachment-img">
-                                </a>
+                                <?= attachmentImagePreviewHtml($att['stored_name'], $att['filename']) ?>
                             <?php else: ?>
                                 <a href="<?= $fileUrl ?>" target="_blank" class="reply-attachment-file">
                                     <i class="bi <?= $iconClass ?>"></i>
@@ -467,10 +465,7 @@ include __DIR__ . '/../../includes/header.php';
                                                 };
                                                 ?>
                                                 <?php if ($isImage): ?>
-                                                    <a href="<?= $fileUrl ?>" target="_blank" class="reply-attachment-img-wrap">
-                                                        <img src="<?= $fileUrl ?>" alt="<?= e($att['filename']) ?>"
-                                                            class="reply-attachment-img">
-                                                    </a>
+                                                    <?= attachmentImagePreviewHtml($att['stored_name'], $att['filename']) ?>
                                                 <?php else: ?>
                                                     <a href="<?= $fileUrl ?>" target="_blank" class="reply-attachment-file">
                                                         <i class="bi <?= $iconClass ?>"></i>
@@ -516,7 +511,8 @@ include __DIR__ . '/../../includes/header.php';
                                 <?php endif; ?>
                             </div>
                             <textarea name="message" id="replyMessage" rows="5" class="form-control"
-                                placeholder="Type your reply here..." required></textarea>
+                                placeholder="Type your reply here… Paste screenshots with Ctrl+V to attach."
+                                data-paste-target="replyFile" data-paste-preview="filePreview" required></textarea>
                         </div>
 
                         <?php if (isStaff()): ?>
@@ -530,13 +526,13 @@ include __DIR__ . '/../../includes/header.php';
                         <?php endif; ?>
 
                         <div class="mb-3">
-                            <label class="form-label">Attachment</label>
-                            <div class="upload-wrapper">
-                                <input type="file" name="attachment" id="replyFile"
-                                    accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx" class="d-none">
+                            <label class="form-label">Attachments</label>
+                            <div class="upload-wrapper" data-paste-target="replyFile" data-paste-preview="filePreview">
+                                <input type="file" name="attachments[]" id="replyFile" multiple
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx" class="d-none">
                                 <div class="upload-area" onclick="document.getElementById('replyFile').click()">
                                     <i class="bi bi-cloud-upload"></i>
-                                    <span>Click or drag to attach a file (max 10MB)</span>
+                                    <span>Click or drag to attach images/files (max 10MB each)</span>
                                 </div>
                                 <div id="filePreview" class="mt-1 small text-muted"></div>
                             </div>
@@ -727,13 +723,23 @@ include __DIR__ . '/../../includes/header.php';
                 <div class="card-header"><i class="bi bi-paperclip me-2 text-primary"></i>Attachments</div>
                 <div class="card-body p-0">
                     <ul class="list-group list-group-flush">
-                        <?php foreach ($attachments as $att): ?>
+                        <?php foreach ($attachments as $att):
+                            $attIsImage = strpos($att['mime_type'], 'image/') === 0;
+                            $attUrl = attachmentPublicUrl($att['stored_name']);
+                            ?>
                             <li class="list-group-item d-flex align-items-center gap-2 py-2 px-3" style="font-size:.8rem">
-                                <i class="bi bi-file-earmark text-muted"></i>
-                                <a href="<?= APP_URL ?>/uploads/<?= e($att['stored_name']) ?>" target="_blank"
-                                    class="text-truncate">
-                                    <?= e($att['filename']) ?>
-                                </a>
+                                <i class="bi <?= $attIsImage ? 'bi-file-earmark-image text-info' : 'bi-file-earmark text-muted' ?>"></i>
+                                <?php if ($attIsImage): ?>
+                                    <a href="#" role="button" class="text-truncate ticket-image-preview"
+                                       data-image-src="<?= e($attUrl) ?>"
+                                       data-image-title="<?= e($att['filename']) ?>">
+                                        <?= e($att['filename']) ?>
+                                    </a>
+                                <?php else: ?>
+                                    <a href="<?= e($attUrl) ?>" target="_blank" class="text-truncate">
+                                        <?= e($att['filename']) ?>
+                                    </a>
+                                <?php endif; ?>
                                 <small class="text-muted ms-auto text-nowrap">
                                     <?= round($att['file_size'] / 1024, 1) ?>KB
                                 </small>
@@ -772,8 +778,68 @@ include __DIR__ . '/../../includes/header.php';
     </div>
 </div>
 
+<!-- Image preview modal -->
+<div class="modal fade" id="ticketImageModal" tabindex="-1" aria-labelledby="ticketImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl ticket-image-modal-dialog">
+        <div class="modal-content ticket-image-modal-content">
+            <div class="modal-header border-0 pb-2">
+                <h5 class="modal-title text-truncate pe-3" id="ticketImageModalLabel">Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0 px-3 pb-3 text-center">
+                <img src="" alt="" id="ticketImageModalImg" class="ticket-image-modal-img">
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <a href="#" target="_blank" rel="noopener" id="ticketImageModalOpen" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Open in new tab
+                </a>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php ob_start(); ?>
 <script>
+// ---- Ticket image preview modal ----
+(function () {
+    const modalEl = document.getElementById('ticketImageModal');
+    if (!modalEl || typeof bootstrap === 'undefined') return;
+
+    const modalImg = document.getElementById('ticketImageModalImg');
+    const modalTitle = document.getElementById('ticketImageModalLabel');
+    const modalOpen = document.getElementById('ticketImageModalOpen');
+    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    function openTicketImagePreview(src, title) {
+        if (!src || !modalImg) return;
+        modalImg.src = src;
+        modalImg.alt = title || 'Attachment';
+        if (modalTitle) modalTitle.textContent = title || 'Image';
+        if (modalOpen) modalOpen.href = src;
+        bsModal.show();
+    }
+
+    document.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.ticket-image-preview');
+        if (!trigger) return;
+        e.preventDefault();
+        openTicketImagePreview(trigger.dataset.imageSrc, trigger.dataset.imageTitle || '');
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        if (modalImg) modalImg.src = '';
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modalEl.classList.contains('show')) {
+            bsModal.hide();
+        }
+    });
+})();
+
 // ---- Dynamic variables for canned responses / smart replies ----
 const TICKET_VARS = {
     requester_name: <?= json_encode($ticket['requester_name'] ?? 'there') ?>,
@@ -839,16 +905,17 @@ $(document).on('click', '.tpl-pick', function() {
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return String(s).replace(/"/g,'&quot;').replace(/\n/g,'&#10;'); }
 
-// ---- File preview ----
+// ---- File preview (multiple) ----
 document.getElementById('replyFile')?.addEventListener('change', function() {
-    const file = this.files[0];
     const $prev = $('#filePreview');
-    if (file) {
-        $prev.html('<i class="bi bi-file-earmark me-1"></i>' + file.name +
-                   ' <span class="text-muted">(' + (file.size/1024).toFixed(1) + ' KB)</span>');
-    } else {
+    if (!this.files || !this.files.length) {
         $prev.html('');
+        return;
     }
+    $prev.html(Array.from(this.files).map(function(file) {
+        return '<div><i class="bi bi-file-earmark me-1"></i>' + file.name +
+            ' <span class="text-muted">(' + (file.size / 1024).toFixed(1) + ' KB)</span></div>';
+    }).join(''));
 });
 
 // ---- AJAX Reply Form submit ----

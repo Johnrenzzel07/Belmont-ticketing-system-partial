@@ -23,6 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <!-- Custom JS -->
     <script src="<?= APP_URL ?>/assets/js/main.js"></script>
+    <script src="<?= APP_URL ?>/assets/js/paste-attachments.js"></script>
 
     <script>
     const APP_URL    = '<?= APP_URL ?>';

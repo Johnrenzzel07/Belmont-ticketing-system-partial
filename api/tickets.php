@@ -207,21 +207,12 @@ switch ($action) {
                 ->execute([$ticketId]);
         }
 
-        // Handle attachment
-        if (!empty($_FILES['attachment']['name']) && $_FILES['attachment']['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['attachment'];
-            if ($file['size'] <= UPLOAD_MAX_SIZE && in_array($file['type'], UPLOAD_ALLOWED)) {
-                $ext    = pathinfo($file['name'], PATHINFO_EXTENSION);
-                $stored = bin2hex(random_bytes(16)) . '.' . $ext;
-                if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0755, true);
-                if (move_uploaded_file($file['tmp_name'], UPLOAD_DIR . $stored)) {
-                    $pdo->prepare(
-                        "INSERT INTO attachments (ticket_id, reply_id, user_id, filename, stored_name, mime_type, file_size)
-                         VALUES (?,?,?,?,?,?,?)"
-                    )->execute([$ticketId, $replyId, $user['id'], $file['name'], $stored, $file['type'], $file['size']]);
-                }
-            }
+        // Handle attachments (multiple images/files)
+        $uploadedFiles = extractUploadedFileList($_FILES['attachments'] ?? null);
+        if (empty($uploadedFiles) && !empty($_FILES['attachment']['name'])) {
+            $uploadedFiles = extractUploadedFileList($_FILES['attachment']);
         }
+        $savedAttachments = saveUploadedAttachments($pdo, $ticketId, $replyId, (int)$user['id'], $uploadedFiles);
 
         // Status update / resolve
         $newStatus  = $resolveOnReply ? 'resolved' : null;
@@ -312,6 +303,11 @@ HTML;
             <span class="reply-time">Just now</span>
         </div>
         <div class="reply-body">{$msgSafe}</div>
+HTML;
+        if (!empty($savedAttachments)) {
+            $html .= renderAttachmentListHtml($savedAttachments);
+        }
+        $html .= <<<HTML
     </div>
 </div>
 HTML;

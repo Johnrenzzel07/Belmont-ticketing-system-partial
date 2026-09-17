@@ -209,15 +209,17 @@ include __DIR__ . '/../../includes/header.php';
                         </div>
                         <div class="col-12">
                             <label class="form-label">Description <span class="text-danger">*</span></label>
-                            <textarea name="description" class="form-control" rows="4" required
-                                      placeholder="Full details of the request"><?= e($formData['description']) ?></textarea>
+                            <textarea name="description" id="migrateDescription" class="form-control" rows="4" required
+                                      placeholder="Full details of the request"
+                                      data-paste-target="migrateTicketFiles"><?= e($formData['description']) ?></textarea>
+                            <div class="migrate-hint mt-1">Paste screenshots (Ctrl+V) in this box or in a thread message to attach images.</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label d-flex align-items-center justify-content-between mb-1">
                                 <span><i class="bi bi-paperclip me-1 text-primary"></i> Ticket Attachments (optional)</span>
                                 <span class="migrate-hint">Excel, PDF, Word, images, etc. (max 10MB each)</span>
                             </label>
-                            <input type="file" name="ticket_files[]" class="form-control form-control-sm" multiple
+                            <input type="file" name="ticket_files[]" id="migrateTicketFiles" class="form-control form-control-sm" multiple
                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip">
                             <div class="migrate-hint mt-1">Attach original files or screenshots from the old ticket request</div>
                         </div>
@@ -351,11 +353,12 @@ include __DIR__ . '/../../includes/header.php';
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label d-flex align-items-center justify-content-between mb-1" style="font-size:.8rem;font-weight:600">
-                                        <span><i class="bi bi-paperclip me-1 text-primary"></i> Attachment (optional)</span>
-                                        <span class="migrate-hint">Excel, PDF, Word, image, etc.</span>
+                                        <span><i class="bi bi-paperclip me-1 text-primary"></i> Attachments (optional)</span>
+                                        <span class="migrate-hint">Multiple images, PDF, Excel, Word, etc.</span>
                                     </label>
                                     <input type="file" name="thread_files[<?= $i ?>][]" class="form-control form-control-sm thread-files-input" multiple
                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip">
+                                    <div class="thread-files-preview small text-muted mt-1"></div>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-check">
@@ -428,11 +431,12 @@ Final reply here..."><?= e($formData['thread_paste'] ?? '') ?></textarea>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label d-flex align-items-center justify-content-between mb-1" style="font-size:.8rem;font-weight:600">
-                                        <span><i class="bi bi-paperclip me-1 text-primary"></i> Attachment (optional)</span>
-                                        <span class="migrate-hint">Excel, PDF, Word, image, etc.</span>
+                                        <span><i class="bi bi-paperclip me-1 text-primary"></i> Attachments (optional)</span>
+                                        <span class="migrate-hint">Multiple images, PDF, Excel, Word, etc.</span>
                                     </label>
                                     <input type="file" name="thread_files[__INDEX__][]" class="form-control form-control-sm thread-files-input" multiple
                                            accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.gif,.webp,.zip">
+                                    <div class="thread-files-preview small text-muted mt-1"></div>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-check">
@@ -602,6 +606,133 @@ Final reply here..."><?= e($formData['thread_paste'] ?? '') ?></textarea>
         });
     }
 
+    function attachSmartDatetimeHandler(input) {
+        if (!input || input._smartAmPmInit) return;
+        input._smartAmPmInit = true;
+        input._digits = [];
+
+        let lastDigitTime = 0;
+        let prevVal = input.value || '';
+        const pad = n => String(n).padStart(2, '0');
+
+        function processDigits() {
+            const digits = input._digits || [];
+            if (digits.length < 10) return;
+
+            // Pattern A: 12 digits: MMDDYYYYHHmm
+            if (digits.length >= 12) {
+                const s12 = digits.slice(-12).join('');
+                const m1 = parseInt(s12.slice(0, 2), 10);
+                const d1 = parseInt(s12.slice(2, 4), 10);
+                const y1 = parseInt(s12.slice(4, 8), 10);
+                const h1 = parseInt(s12.slice(8, 10), 10);
+                const min1 = parseInt(s12.slice(10, 12), 10);
+
+                if (y1 >= 1970 && y1 <= 2099 && m1 >= 1 && m1 <= 12 && d1 >= 1 && d1 <= 31 && h1 >= 0 && h1 <= 23 && min1 >= 0 && min1 <= 59) {
+                    input.value = y1 + '-' + pad(m1) + '-' + pad(d1) + 'T' + pad(h1) + ':' + pad(min1);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                }
+
+                // Pattern B: YYYYMMDDHHmm
+                const y3 = parseInt(s12.slice(0, 4), 10);
+                const m3 = parseInt(s12.slice(4, 6), 10);
+                const d3 = parseInt(s12.slice(6, 8), 10);
+                const h3 = parseInt(s12.slice(8, 10), 10);
+                const min3 = parseInt(s12.slice(10, 12), 10);
+                if (y3 >= 1970 && y3 <= 2099 && m3 >= 1 && m3 <= 12 && d3 >= 1 && d3 <= 31 && h3 >= 0 && h3 <= 23 && min3 >= 0 && min3 <= 59) {
+                    input.value = y3 + '-' + pad(m3) + '-' + pad(d3) + 'T' + pad(h3) + ':' + pad(min3);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                }
+            }
+
+            // Pattern C: 10 digits: MMDDYYYYHH (auto-set AM if hour 1..11)
+            if (digits.length === 10) {
+                const s10 = digits.slice(-10).join('');
+                const m1 = parseInt(s10.slice(0, 2), 10);
+                const d1 = parseInt(s10.slice(2, 4), 10);
+                const y1 = parseInt(s10.slice(4, 8), 10);
+                const h1 = parseInt(s10.slice(8, 10), 10);
+                if (y1 >= 1970 && y1 <= 2099 && m1 >= 1 && m1 <= 12 && d1 >= 1 && d1 <= 31 && h1 >= 1 && h1 <= 11) {
+                    input.value = y1 + '-' + pad(m1) + '-' + pad(d1) + 'T' + pad(h1) + ':00';
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        }
+
+        input.addEventListener('keydown', function (e) {
+            if (/^[0-9]$/.test(e.key)) {
+                const now = Date.now();
+                if (now - lastDigitTime > 15000) {
+                    input._digits = [];
+                }
+                lastDigitTime = now;
+                input._digits.push(e.key);
+                if (input._digits.length > 16) {
+                    input._digits = input._digits.slice(-16);
+                }
+            } else if (['Backspace', 'Delete'].includes(e.key)) {
+                if (input._digits.length > 0) input._digits.pop();
+            } else if (e.key === 'a' || e.key === 'A' || e.key === 'p' || e.key === 'P') {
+                input._digits = [];
+            }
+        });
+
+        input.addEventListener('keyup', function (e) {
+            if (/^[0-9]$/.test(e.key)) {
+                processDigits();
+            }
+        });
+
+        input.addEventListener('blur', function () {
+            processDigits();
+        });
+
+        input.addEventListener('input', function () {
+            const curVal = input.value || '';
+            if (!curVal || !curVal.includes('T')) {
+                prevVal = curVal;
+                return;
+            }
+
+            const [curDate, curTime] = curVal.split('T');
+            const [prevDate, prevTime] = (prevVal || '').split('T');
+
+            // If date part changed, do not touch time
+            if (prevDate !== curDate) {
+                prevVal = curVal;
+                return;
+            }
+
+            // If time part changed
+            if (prevTime !== curTime && curTime) {
+                const timeParts = curTime.split(':');
+                const hour = parseInt(timeParts[0], 10);
+                const minute = timeParts[1] || '00';
+
+                // Check recent digits typed
+                if (input._digits && input._digits.length > 0) {
+                    const last2 = parseInt(input._digits.slice(-2).join(''), 10);
+                    const last1 = parseInt(input._digits.slice(-1).join(''), 10);
+                    if ((last2 >= 1 && last2 <= 11) || (last1 >= 1 && last1 <= 9 && input._digits.length === 1)) {
+                        if (hour >= 13 && hour <= 23) {
+                            const amHour = hour - 12;
+                            input.value = curDate + 'T' + pad(amHour) + ':' + minute;
+                        }
+                    }
+                }
+            }
+
+            prevVal = input.value || '';
+        });
+    }
+
+    document.querySelectorAll('input[type="datetime-local"]').forEach(attachSmartDatetimeHandler);
+
     function addThreadRow(prefill) {
         if (!threadRows || !threadTemplate) return;
         const index = threadRows.querySelectorAll('[data-thread-row]').length;
@@ -610,6 +741,12 @@ Final reply here..."><?= e($formData['thread_paste'] ?? '') ?></textarea>
         wrapper.innerHTML = html.trim();
         const row = wrapper.firstElementChild;
         threadRows.appendChild(row);
+
+        const dateInput = row.querySelector('input[type="datetime-local"]');
+        if (dateInput) attachSmartDatetimeHandler(dateInput);
+        if (window.TicketPasteAttachments) {
+            TicketPasteAttachments.initThreadRowPaste(row);
+        }
 
         if (prefill) {
             if (prefill.user_id) {

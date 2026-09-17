@@ -112,7 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
             </button>
             <div class="text-center mt-3">
-                <a href="<?= APP_URL ?>/forgot-password.php" style="font-size:.82rem;color:var(--text-muted);text-decoration:none">
+                <a href="<?= APP_URL ?>/forgot-password.php"
+                    style="font-size:.82rem;color:var(--text-muted);text-decoration:none">
                     Forgot your password?
                 </a>
             </div>

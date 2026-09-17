@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,12 +13,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/main.css">
 
     <?= $extraHead ?? '' ?>
 </head>
+
 <body class="app-body">
     <?php $flash = getFlashMessages(); ?>
 
@@ -30,24 +33,23 @@
                 <i class="bi bi-list"></i>
             </button>
             <a class="d-flex align-items-center text-decoration-none" href="<?= APP_URL ?>/index.php">
-                <img src="<?= APP_URL ?>/public/images/logo.png"
-                     alt="<?= APP_NAME ?>"
-                     style="height:36px;width:auto;object-fit:contain;display:block;">
+                <img src="<?= APP_URL ?>/public/images/logo.png" alt="<?= APP_NAME ?>"
+                    style="height:36px;width:auto;object-fit:contain;display:block;">
             </a>
         </div>
 
         <!-- Center: Search -->
         <div class="navbar-center">
             <?php if (isStaff()): ?>
-            <form action="<?= APP_URL ?>/views/tickets/index.php" method="GET" class="navbar-search">
-                <i class="bi bi-search search-icon"></i>
-                <input type="text" name="q" class="form-control search-input"
-                       placeholder="Search tickets, users, articles..."
-                       value="<?= e($_GET['q'] ?? '') ?>" autocomplete="off">
-                <div class="search-shortcuts">
-                    <kbd>/</kbd>
-                </div>
-            </form>
+                <form action="<?= APP_URL ?>/views/tickets/index.php" method="GET" class="navbar-search">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" name="q" class="form-control search-input"
+                        placeholder="Search tickets, users, articles..." value="<?= e($_GET['q'] ?? '') ?>"
+                        autocomplete="off">
+                    <div class="search-shortcuts">
+                        <kbd>/</kbd>
+                    </div>
+                </form>
             <?php endif; ?>
         </div>
 
@@ -61,15 +63,16 @@
 
             <!-- Notifications Bell -->
             <div class="dropdown notif-dropdown position-relative">
-                <button class="btn-icon position-relative" id="notifBell"
-                        data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+                <button class="btn-icon position-relative" id="notifBell" data-bs-toggle="dropdown"
+                    aria-expanded="false" aria-label="Notifications">
                     <i class="bi bi-bell fs-5"></i>
                     <span class="notif-badge" id="notifCount" style="display:none"></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end notif-menu p-0" id="notifPanel">
                     <div class="notif-header d-flex justify-content-between align-items-center">
                         <strong style="font-size:.82rem">Notifications</strong>
-                        <a href="#" class="small text-primary" id="markAllRead" style="font-size:.75rem">Mark all read</a>
+                        <a href="#" class="small text-primary" id="markAllRead" style="font-size:.75rem">Mark all
+                            read</a>
                     </div>
                     <div class="notif-list" id="notifList">
                         <div class="text-center py-4 text-muted small">
@@ -77,7 +80,8 @@
                         </div>
                     </div>
                     <div class="notif-footer">
-                        <a href="<?= APP_URL ?>/views/notifications.php" class="notif-footer-link">See all notifications</a>
+                        <a href="<?= APP_URL ?>/views/notifications.php" class="notif-footer-link">See all
+                            notifications</a>
                     </div>
                 </div>
             </div>
@@ -103,18 +107,23 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:180px;font-size:.83rem">
                     <li class="dropdown-header text-muted" style="font-size:.75rem"><?= e($u['email']) ?></li>
-                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="<?= APP_URL ?>/views/profile/index.php">
-                        <i class="bi bi-person"></i>My Profile
-                    </a></li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2"
+                            href="<?= APP_URL ?>/views/profile/index.php">
+                            <i class="bi bi-person"></i>My Profile
+                        </a></li>
                     <?php if (isAdmin()): ?>
-                    <li><a class="dropdown-item d-flex align-items-center gap-2" href="<?= APP_URL ?>/views/admin/settings.php">
-                        <i class="bi bi-gear"></i>Settings
-                    </a></li>
+                        <li><a class="dropdown-item d-flex align-items-center gap-2"
+                                href="<?= APP_URL ?>/views/admin/settings.php">
+                                <i class="bi bi-gear"></i>Settings
+                            </a></li>
                     <?php endif; ?>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="<?= APP_URL ?>/logout.php">
-                        <i class="bi bi-box-arrow-right"></i>Sign Out
-                    </a></li>
+                    <li>
+                        <hr class="dropdown-divider">
+                    </li>
+                    <li><a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                            href="<?= APP_URL ?>/logout.php">
+                            <i class="bi bi-box-arrow-right"></i>Sign Out
+                        </a></li>
                 </ul>
             </div>
 
@@ -140,7 +149,7 @@
                     <!-- Main -->
                     <li class="nav-item">
                         <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], 'index.php') !== false && !strpos($_SERVER['REQUEST_URI'], 'views') ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/index.php">
+                            href="<?= APP_URL ?>/index.php">
                             <i class="bi bi-grid-1x2"></i>
                             <span>Dashboard</span>
                         </a>
@@ -148,122 +157,125 @@
 
                     <li class="nav-item">
                         <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/tickets/index') !== false || (strpos($_SERVER['REQUEST_URI'], '/tickets/') !== false && strpos($_SERVER['REQUEST_URI'], 'dept_inbox') === false) ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/tickets/index.php">
+                            href="<?= APP_URL ?>/views/tickets/index.php">
                             <i class="bi bi-ticket-detailed"></i>
                             <span>Tickets</span>
                             <?php
-                            $navScope  = deptScopeId();
+                            $navScope = deptScopeId();
                             $openCount = db()->query(
                                 "SELECT COUNT(*) FROM tickets WHERE status='open'"
                                 . ($navScope !== null ? " AND department_id = {$navScope}" : '')
                             )->fetchColumn();
                             if ($openCount > 0): ?>
-                            <span class="sidebar-badge ms-auto"><?= $openCount ?></span>
+                                <span class="sidebar-badge ms-auto"><?= $openCount ?></span>
                             <?php endif; ?>
                         </a>
                     </li>
 
-                    <?php $navUser = currentUser(); if (!empty($navUser['dept_id'])): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], 'dept_inbox') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/tickets/dept_inbox.php">
-                            <i class="bi bi-inbox"></i>
-                            <span>Department Inbox</span>
-                            <?php
-                            try {
-                                $deptInboxStmt = db()->prepare(
-                                    "SELECT COUNT(*) FROM tickets
+                    <?php $navUser = currentUser();
+                    if (!empty($navUser['dept_id'])): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], 'dept_inbox') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/tickets/dept_inbox.php">
+                                <i class="bi bi-inbox"></i>
+                                <span>Department Inbox</span>
+                                <?php
+                                try {
+                                    $deptInboxStmt = db()->prepare(
+                                        "SELECT COUNT(*) FROM tickets
                                      WHERE department_id = ?
                                        AND status NOT IN ('resolved','closed')
                                        AND (assigned_to IS NULL OR status = 'open')"
-                                );
-                                $deptInboxStmt->execute([(int)$navUser['dept_id']]);
-                                $deptInboxCount = (int)$deptInboxStmt->fetchColumn();
-                            } catch (Exception $e) { $deptInboxCount = 0; }
-                            if ($deptInboxCount > 0): ?>
-                            <span class="sidebar-badge ms-auto"><?= $deptInboxCount ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </li>
+                                    );
+                                    $deptInboxStmt->execute([(int) $navUser['dept_id']]);
+                                    $deptInboxCount = (int) $deptInboxStmt->fetchColumn();
+                                } catch (Exception $e) {
+                                    $deptInboxCount = 0;
+                                }
+                                if ($deptInboxCount > 0): ?>
+                                    <span class="sidebar-badge ms-auto"><?= $deptInboxCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
                     <?php endif; ?>
 
                     <?php if (isStaff()): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/reports/') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/reports/index.php">
-                            <i class="bi bi-bar-chart-line"></i>
-                            <span>Reports</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], 'admin/csat') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/csat.php">
-                            <i class="bi bi-star-half"></i>
-                            <span>CSAT Ratings</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/reports/') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/reports/index.php">
+                                <i class="bi bi-bar-chart-line"></i>
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], 'admin/csat') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/csat.php">
+                                <i class="bi bi-star-half"></i>
+                                <span>CSAT Ratings</span>
+                            </a>
+                        </li>
                     <?php endif; ?>
 
                     <li class="nav-item">
                         <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/kb/') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/kb/index.php">
+                            href="<?= APP_URL ?>/views/kb/index.php">
                             <i class="bi bi-book-half"></i>
                             <span>Knowledge Base</span>
                         </a>
                     </li>
 
                     <?php if (isAdmin()): ?>
-                    <hr class="sidebar-sep">
+                        <hr class="sidebar-sep">
 
-                    <li class="nav-section-label">Admin</li>
+                        <li class="nav-section-label">Admin</li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/users/') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/users/index.php">
-                            <i class="bi bi-people"></i>
-                            <span>Users</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/users/') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/users/index.php">
+                                <i class="bi bi-people"></i>
+                                <span>Users</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/departments') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/departments.php">
-                            <i class="bi bi-building"></i>
-                            <span>Departments</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/departments') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/departments.php">
+                                <i class="bi bi-building"></i>
+                                <span>Departments</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/categories') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/categories.php">
-                            <i class="bi bi-tags"></i>
-                            <span>Categories</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/categories') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/categories.php">
+                                <i class="bi bi-tags"></i>
+                                <span>Categories</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/templates') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/templates.php">
-                            <i class="bi bi-card-text"></i>
-                            <span>Reply Templates</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/templates') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/templates.php">
+                                <i class="bi bi-card-text"></i>
+                                <span>Reply Templates</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/logs') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/logs.php">
-                            <i class="bi bi-journal-text"></i>
-                            <span>Activity Logs</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/logs') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/logs.php">
+                                <i class="bi bi-journal-text"></i>
+                                <span>Activity Logs</span>
+                            </a>
+                        </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/migrate') !== false ? 'active' : '' ?>"
-                           href="<?= APP_URL ?>/views/admin/migrate.php">
-                            <i class="bi bi-box-arrow-in-down-right"></i>
-                            <span>Migrate Tickets</span>
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link <?= strpos($_SERVER['REQUEST_URI'], '/migrate') !== false ? 'active' : '' ?>"
+                                href="<?= APP_URL ?>/views/admin/migrate.php">
+                                <i class="bi bi-box-arrow-in-down-right"></i>
+                                <span>Migrate Tickets</span>
+                            </a>
+                        </li>
                     <?php endif; ?>
 
                 </ul>
@@ -288,11 +300,11 @@
         <main class="app-main" id="appMain">
             <!-- Flash Messages -->
             <?php foreach ($flash as $msg): ?>
-            <div class="alert alert-<?= e($msg['type']) ?> alert-dismissible fade show mx-4 mt-3 mb-0 alert-flash"
-                 role="alert">
-                <?= e($msg['message']) ?>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
+                <div class="alert alert-<?= e($msg['type']) ?> alert-dismissible fade show mx-4 mt-3 mb-0 alert-flash"
+                    role="alert">
+                    <?= e($msg['message']) ?>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             <?php endforeach; ?>
 
             <div class="page-content">

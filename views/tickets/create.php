@@ -144,23 +144,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Handle attachment
-        if (!empty($_FILES['attachment']['name'])) {
-            $file = $_FILES['attachment'];
-            if ($file['error'] === UPLOAD_ERR_OK && $file['size'] <= UPLOAD_MAX_SIZE) {
-                if (in_array($file['type'], UPLOAD_ALLOWED)) {
-                    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-                    $stored = bin2hex(random_bytes(16)) . '.' . $ext;
-                    if (!is_dir(UPLOAD_DIR)) mkdir(UPLOAD_DIR, 0755, true);
-                    if (move_uploaded_file($file['tmp_name'], UPLOAD_DIR . $stored)) {
-                        $pdo->prepare(
-                            "INSERT INTO attachments (ticket_id, user_id, filename, stored_name, mime_type, file_size)
-                             VALUES (?,?,?,?,?,?)"
-                        )->execute([$ticketId, $user['id'], $file['name'], $stored, $file['type'], $file['size']]);
-                    }
-                }
-            }
+        // Handle attachments (multiple images/files)
+        $uploadedFiles = extractUploadedFileList($_FILES['attachments'] ?? null);
+        if (empty($uploadedFiles) && !empty($_FILES['attachment']['name'])) {
+            $uploadedFiles = extractUploadedFileList($_FILES['attachment']);
         }
+        saveUploadedAttachments($pdo, $ticketId, null, (int)$user['id'], $uploadedFiles);
 
         // Notifications
         if ($formData['assigned_to']) {
@@ -361,8 +350,9 @@ include __DIR__ . '/../../includes/header.php';
                         <label for="description" class="form-label required">Description</label>
                         <textarea id="description" name="description" rows="7" class="form-control"
                                   placeholder="Provide detailed information about your issue..."
+                                  data-paste-target="attachFile" data-paste-preview="createFilePreview"
                                   required><?= e($formData['description'] ?? '') ?></textarea>
-                        <div class="form-text">Include steps to reproduce, error messages, screenshots, etc.</div>
+                        <div class="form-text">Include steps to reproduce, error messages, etc. Paste screenshots here (Ctrl+V) to attach them.</div>
                     </div>
                     <div class="mb-0 cc-field">
                         <label for="ccUsers" class="form-label">CC / Notify Others <span class="text-muted">(optional)</span></label>
@@ -388,18 +378,18 @@ include __DIR__ . '/../../includes/header.php';
                 </div>
             </div>
 
-            <!-- Attachment -->
+            <!-- Attachments -->
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-paperclip me-2 text-primary"></i>Attachment</div>
+                <div class="card-header"><i class="bi bi-paperclip me-2 text-primary"></i>Attachments</div>
                 <div class="card-body">
-                    <div class="upload-wrapper">
-                        <input type="file" name="attachment" id="attachFile"
-                               accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+                    <div class="upload-wrapper" data-paste-target="attachFile" data-paste-preview="createFilePreview">
+                        <input type="file" name="attachments[]" id="attachFile" multiple
+                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx"
                                class="d-none">
                         <div class="upload-area">
                             <i class="bi bi-cloud-upload"></i>
-                            <div>Click to browse or drag &amp; drop</div>
-                            <small class="text-muted d-block mt-1">Supports: JPG, PNG, PDF, DOC, XLS (max 10MB)</small>
+                            <div>Click to browse or drag &amp; drop multiple files</div>
+                            <small class="text-muted d-block mt-1">Images, PDF, DOC, XLS — up to 10MB each</small>
                         </div>
                         <div id="createFilePreview" class="mt-2 small text-muted"></div>
                     </div>
@@ -545,14 +535,18 @@ document.querySelector('[type="submit"]').closest('form').addEventListener('subm
     });
 });
 
-// File preview
+// File preview (multiple)
 document.getElementById('attachFile')?.addEventListener('change', function() {
-    const file = this.files[0];
-    if (file) {
-        document.getElementById('createFilePreview').innerHTML =
-            '<i class="bi bi-file-earmark me-1"></i>' + file.name +
-            ' <span class="text-muted">(' + (file.size/1024).toFixed(1) + ' KB)</span>';
+    const preview = document.getElementById('createFilePreview');
+    if (!preview) return;
+    if (!this.files || !this.files.length) {
+        preview.innerHTML = '';
+        return;
     }
+    preview.innerHTML = Array.from(this.files).map(function(file) {
+        return '<div><i class="bi bi-file-earmark me-1"></i>' + file.name +
+            ' <span class="text-muted">(' + (file.size / 1024).toFixed(1) + ' KB)</span></div>';
+    }).join('');
 });
 
 // Category combobox — select existing or type a new one

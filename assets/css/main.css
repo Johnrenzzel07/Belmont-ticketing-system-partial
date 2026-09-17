@@ -2270,6 +2270,12 @@ body.ticket-submit-busy { overflow: hidden; }
     overflow: hidden;
     border: 1px solid var(--border);
     flex-shrink: 0;
+    cursor: zoom-in;
+    text-decoration: none;
+}
+.reply-attachment-img-wrap:focus-visible {
+    outline: 2px solid var(--primary, #0d6efd);
+    outline-offset: 2px;
 }
 .reply-attachment-img {
     display: block;
@@ -2282,6 +2288,27 @@ body.ticket-submit-busy { overflow: hidden; }
 }
 .reply-attachment-img:hover {
     opacity: .85;
+}
+
+.ticket-image-modal-content {
+    background: var(--surface, #fff);
+}
+.ticket-image-modal-dialog {
+    max-width: min(96vw, 1100px);
+}
+.ticket-image-modal-img {
+    display: block;
+    max-width: 100%;
+    max-height: min(78vh, 900px);
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    background: var(--bg-muted, #f1f5f9);
+}
+a.ticket-image-preview.text-truncate:hover {
+    text-decoration: underline;
 }
 
 /* Non-image file chip */

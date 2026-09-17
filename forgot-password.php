@@ -11,9 +11,9 @@ if (isLoggedIn()) {
     exit;
 }
 
-$sent      = false;
-$error     = '';
-$devLink   = ''; // shown locally when MAIL_ENABLED is false
+$sent = false;
+$error = '';
+$devLink = ''; // shown locally when MAIL_ENABLED is false
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
-        $pdo  = db();
+        $pdo = db();
         $user = $pdo->prepare("SELECT id, name, email FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
         $user->execute([$email]);
         $user = $user->fetch();
@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ->execute([$user['id']]);
 
             // Generate token
-            $token   = bin2hex(random_bytes(32));
+            $token = bin2hex(random_bytes(32));
             $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
             $pdo->prepare("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?,?,?)")
@@ -69,20 +69,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Forgot Password | <?= APP_NAME ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/main.css">
 </head>
+
 <body class="login-page">
 
     <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
-        <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(99,102,241,.08);top:-80px;right:-60px;filter:blur(40px)"></div>
-        <div style="position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(139,92,246,.06);bottom:-100px;left:-80px;filter:blur(60px)"></div>
+        <div
+            style="position:absolute;width:300px;height:300px;border-radius:50%;background:rgba(99,102,241,.08);top:-80px;right:-60px;filter:blur(40px)">
+        </div>
+        <div
+            style="position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(139,92,246,.06);bottom:-100px;left:-80px;filter:blur(60px)">
+        </div>
     </div>
 
     <div class="login-card">
@@ -100,10 +107,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 If that email is registered, you'll receive a reset link shortly. Check your inbox (and spam folder).
             </div>
             <?php if ($devLink): ?>
-            <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.78rem;border-radius:8px">
-                <strong>Dev mode</strong> — Email not sent (MAIL_ENABLED = false).<br>
-                <a href="<?= e($devLink) ?>" style="word-break:break-all"><?= e($devLink) ?></a>
-            </div>
+                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.78rem;border-radius:8px">
+                    <strong>Dev mode</strong> — Email not sent (MAIL_ENABLED = false).<br>
+                    <a href="<?= e($devLink) ?>" style="word-break:break-all"><?= e($devLink) ?></a>
+                </div>
             <?php endif; ?>
         <?php elseif ($error): ?>
             <div class="alert alert-danger py-2 px-3 mb-3" style="font-size:.83rem;border-radius:8px">
@@ -112,19 +119,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <?php if (!$sent): ?>
-        <form method="POST" novalidate>
-            <div class="mb-3">
-                <label for="email" class="form-label required">Email Address</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
-                    <input type="email" id="email" name="email" class="form-control border-start-0"
-                           value="<?= e($_POST['email'] ?? '') ?>" placeholder="you@belmont.ph" required autofocus>
+            <form method="POST" novalidate>
+                <div class="mb-3">
+                    <label for="email" class="form-label required">Email Address</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i
+                                class="bi bi-envelope text-muted"></i></span>
+                        <input type="email" id="email" name="email" class="form-control border-start-0"
+                            value="<?= e($_POST['email'] ?? '') ?>" placeholder="you@belmont.ph" required autofocus>
+                    </div>
                 </div>
-            </div>
-            <button type="submit" class="btn btn-primary w-100 btn-lg" style="border-radius:8px;font-weight:600">
-                <i class="bi bi-send me-1"></i>Send Reset Link
-            </button>
-        </form>
+                <button type="submit" class="btn btn-primary w-100 btn-lg" style="border-radius:8px;font-weight:600">
+                    <i class="bi bi-send me-1"></i>Send Reset Link
+                </button>
+            </form>
         <?php endif; ?>
 
         <div class="text-center mt-3">
@@ -134,4 +142,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </body>
+
 </html>

@@ -476,3 +476,281 @@ function resolveMigrationCategoryId(PDO $pdo, ?int $categoryId, string $category
 
     return (int)$pdo->lastInsertId();
 }
+
+/**
+ * Extract an uploaded file list from a standard or nested $_FILES entry.
+ *
+ * @param array|null $filesEntry e.g. $_FILES['attachments'] or $_FILES['thread_files']
+ * @param int|string|null $subIndex index for nested thread row uploads
+ * @return array<int, array{name:string,type:string,tmp_name:string,error:int,size:int}>
+ */
+function extractUploadedFileList(?array $filesEntry, $subIndex = null): array
+{
+    if (empty($filesEntry) || empty($filesEntry['name'])) {
+        return [];
+    }
+
+    $results = [];
+
+    if ($subIndex !== null) {
+        $names = null;
+        $types = null;
+        $tmps  = null;
+        $errs  = null;
+        $sizes = null;
+
+        if (isset($filesEntry['name'][$subIndex])) {
+            $names = $filesEntry['name'][$subIndex];
+            $types = $filesEntry['type'][$subIndex] ?? [];
+            $tmps  = $filesEntry['tmp_name'][$subIndex] ?? [];
+            $errs  = $filesEntry['error'][$subIndex] ?? [];
+            $sizes = $filesEntry['size'][$subIndex] ?? [];
+        } elseif (is_numeric($subIndex)) {
+            $nameVals = array_values($filesEntry['name']);
+            $pos = (int)$subIndex;
+            if (isset($nameVals[$pos])) {
+                $names = $nameVals[$pos];
+                $typeVals = isset($filesEntry['type']) ? array_values($filesEntry['type']) : [];
+                $tmpVals  = isset($filesEntry['tmp_name']) ? array_values($filesEntry['tmp_name']) : [];
+                $errVals  = isset($filesEntry['error']) ? array_values($filesEntry['error']) : [];
+                $sizeVals = isset($filesEntry['size']) ? array_values($filesEntry['size']) : [];
+                $types = $typeVals[$pos] ?? [];
+                $tmps  = $tmpVals[$pos] ?? [];
+                $errs  = $errVals[$pos] ?? [];
+                $sizes = $sizeVals[$pos] ?? [];
+            }
+        }
+
+        if ($names === null) {
+            return [];
+        }
+
+        if (is_array($names)) {
+            foreach ($names as $k => $name) {
+                $err = $errs[$k] ?? UPLOAD_ERR_NO_FILE;
+                $tmp = $tmps[$k] ?? '';
+                if ($err === UPLOAD_ERR_OK && !empty($name) && !empty($tmp)) {
+                    $results[] = [
+                        'name'     => $name,
+                        'type'     => $types[$k] ?? 'application/octet-stream',
+                        'tmp_name' => $tmp,
+                        'error'    => $err,
+                        'size'     => (int)($sizes[$k] ?? 0),
+                    ];
+                }
+            }
+        } elseif (($errs ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK && !empty($names) && !empty($tmps)) {
+            $results[] = [
+                'name'     => $names,
+                'type'     => is_string($types) ? $types : 'application/octet-stream',
+                'tmp_name' => is_string($tmps) ? $tmps : '',
+                'error'    => is_int($errs) ? $errs : UPLOAD_ERR_OK,
+                'size'     => is_numeric($sizes) ? (int)$sizes : 0,
+            ];
+        }
+        return $results;
+    }
+
+    if (is_array($filesEntry['name'])) {
+        foreach ($filesEntry['name'] as $k => $name) {
+            $err = $filesEntry['error'][$k] ?? UPLOAD_ERR_NO_FILE;
+            $tmp = $filesEntry['tmp_name'][$k] ?? '';
+            if ($err === UPLOAD_ERR_OK && !empty($name) && !empty($tmp)) {
+                $results[] = [
+                    'name'     => $name,
+                    'type'     => $filesEntry['type'][$k] ?? 'application/octet-stream',
+                    'tmp_name' => $tmp,
+                    'error'    => $err,
+                    'size'     => (int)($filesEntry['size'][$k] ?? 0),
+                ];
+            }
+        }
+    } elseif (($filesEntry['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+        && !empty($filesEntry['name']) && !empty($filesEntry['tmp_name'])) {
+        $results[] = [
+            'name'     => $filesEntry['name'],
+            'type'     => $filesEntry['type'] ?? 'application/octet-stream',
+            'tmp_name' => $filesEntry['tmp_name'],
+            'error'    => (int)$filesEntry['error'],
+            'size'     => (int)$filesEntry['size'],
+        ];
+    }
+
+    return $results;
+}
+
+/**
+ * Save one uploaded file to disk and record it in `attachments`.
+ *
+ * @return array{id:int,filename:string,stored_name:string,mime_type:string,file_size:int}|null
+ */
+function saveUploadedAttachment(
+    PDO $pdo,
+    int $ticketId,
+    ?int $replyId,
+    int $userId,
+    array $file
+): ?array {
+    if (empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        return null;
+    }
+
+    $maxSize = defined('UPLOAD_MAX_SIZE') ? UPLOAD_MAX_SIZE : (10 * 1024 * 1024);
+    if ($file['size'] > $maxSize || $file['size'] <= 0) {
+        return null;
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowedExts = [
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg',
+        'pdf',
+        'doc', 'docx', 'rtf',
+        'xls', 'xlsx', 'csv',
+        'ppt', 'pptx',
+        'txt', 'zip', 'rar', '7z', 'tar', 'gz',
+    ];
+    if (!in_array($ext, $allowedExts, true)) {
+        return null;
+    }
+
+    $mime = $file['type'] ?? 'application/octet-stream';
+    if ($mime === 'application/octet-stream' || $mime === '') {
+        $mimeMap = [
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp'  => 'image/bmp',
+            'svg'  => 'image/svg+xml',
+            'pdf'  => 'application/pdf',
+            'doc'  => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls'  => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'csv'  => 'text/csv',
+            'txt'  => 'text/plain',
+            'zip'  => 'application/zip',
+            'rar'  => 'application/x-rar-compressed',
+            '7z'   => 'application/x-7z-compressed',
+        ];
+        $mime = $mimeMap[$ext] ?? 'application/octet-stream';
+    }
+
+    if (defined('UPLOAD_ALLOWED') && is_array(UPLOAD_ALLOWED) && !in_array($mime, UPLOAD_ALLOWED, true)) {
+        return null;
+    }
+
+    $uploadDir = rtrim(defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads/'), '/\\') . DIRECTORY_SEPARATOR;
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $stored = bin2hex(random_bytes(16)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $stored)) {
+        return null;
+    }
+
+    $pdo->prepare(
+        "INSERT INTO attachments (ticket_id, reply_id, user_id, filename, stored_name, mime_type, file_size)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
+    )->execute([
+        $ticketId,
+        $replyId,
+        $userId,
+        $file['name'],
+        $stored,
+        $mime,
+        $file['size'],
+    ]);
+
+    return [
+        'id'          => (int)$pdo->lastInsertId(),
+        'filename'    => $file['name'],
+        'stored_name' => $stored,
+        'mime_type'   => $mime,
+        'file_size'   => (int)$file['size'],
+    ];
+}
+
+/**
+ * Save multiple uploaded files for a ticket or reply.
+ *
+ * @param array<int, array{name:string,type:string,tmp_name:string,error:int,size:int}> $files
+ * @return array<int, array{id:int,filename:string,stored_name:string,mime_type:string,file_size:int}>
+ */
+function saveUploadedAttachments(
+    PDO $pdo,
+    int $ticketId,
+    ?int $replyId,
+    int $userId,
+    array $files
+): array {
+    $saved = [];
+    foreach ($files as $file) {
+        $att = saveUploadedAttachment($pdo, $ticketId, $replyId, $userId, $file);
+        if ($att) {
+            $saved[] = $att;
+        }
+    }
+    return $saved;
+}
+
+function attachmentPublicUrl(string $storedName): string
+{
+    return APP_URL . '/uploads/' . ltrim($storedName, '/');
+}
+
+/**
+ * Thumbnail that opens the ticket image preview modal.
+ */
+function attachmentImagePreviewHtml(string $storedName, string $filename): string
+{
+    $fileUrl = htmlspecialchars(attachmentPublicUrl($storedName), ENT_QUOTES, 'UTF-8');
+    $filenameEsc = htmlspecialchars($filename, ENT_QUOTES, 'UTF-8');
+
+    return '<a href="#" role="button" class="reply-attachment-img-wrap ticket-image-preview"'
+        . ' data-image-src="' . $fileUrl . '" data-image-title="' . $filenameEsc . '"'
+        . ' aria-label="View ' . $filenameEsc . '">'
+        . '<img src="' . $fileUrl . '" alt="' . $filenameEsc . '" class="reply-attachment-img" loading="lazy">'
+        . '</a>';
+}
+
+/**
+ * Render attachment thumbnails/links for ticket threads.
+ */
+function renderAttachmentListHtml(array $attachments): string
+{
+    if (empty($attachments)) {
+        return '';
+    }
+
+    $html = '<div class="reply-attachments">';
+    foreach ($attachments as $att) {
+        $isImage = strpos($att['mime_type'], 'image/') === 0;
+        $fileUrl = htmlspecialchars(attachmentPublicUrl($att['stored_name']), ENT_QUOTES, 'UTF-8');
+        $filename = htmlspecialchars($att['filename'], ENT_QUOTES, 'UTF-8');
+        $ext = strtolower(pathinfo($att['filename'], PATHINFO_EXTENSION));
+        $iconClass = match ($ext) {
+            'pdf' => 'bi-file-earmark-pdf text-danger',
+            'doc', 'docx' => 'bi-file-earmark-word text-primary',
+            'xls', 'xlsx' => 'bi-file-earmark-excel text-success',
+            'jpg', 'jpeg', 'png', 'gif', 'webp' => 'bi-file-earmark-image text-info',
+            default => 'bi-file-earmark text-muted',
+        };
+
+        if ($isImage) {
+            $html .= attachmentImagePreviewHtml($att['stored_name'], $att['filename']);
+        } else {
+            $sizeKb = round(((int)$att['file_size']) / 1024, 1);
+            $html .= '<a href="' . $fileUrl . '" target="_blank" class="reply-attachment-file">'
+                . '<i class="bi ' . $iconClass . '"></i>'
+                . '<span>' . $filename . '</span>'
+                . '<small class="text-muted">' . $sizeKb . 'KB</small>'
+                . '</a>';
+        }
+    }
+    $html .= '</div>';
+
+    return $html;
+}
